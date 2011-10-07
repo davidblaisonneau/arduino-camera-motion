@@ -4,7 +4,7 @@
  
 // Initialisation des variables
 int LedInterne = 13;
-int delai = 200;
+int delai = 100;
 
 // Setup
 void setup(){
