@@ -20,13 +20,13 @@
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-byte ip[] = { 10 ,193 ,11 , 249 };
-
-String readString = String(100);
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEF };
+//byte ip[] = { 10 ,193 ,11 , 249 };
+byte ip[] = { 192, 168, 1 ,151 };
 
 int LedInterne = 13;
 int delai = 1000;
+String readString;
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
@@ -52,8 +52,7 @@ void loop()
   Client client = server.available();
   if (client) {
     Serial.print("New client\n");
-    // an http request ends with a blank line
-    boolean currentLineIsBlank = true;
+    readString = "";
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();
@@ -64,7 +63,7 @@ void loop()
         
         // We are just analysing the first line, so we wait for a \n
         if (c == '\r') {
-          Serial.print ( "\nAnalyse\n" );
+          Serial.print ( "\nAnalyse "+ readString + "\n" );
           analyseURL ( client, readString );
           break;
         }
@@ -95,6 +94,8 @@ void analyseURL ( Client client, String request ){
     int param_end_index = request.indexOf(" ");
     request = request.substring( 0, param_end_index );
     String result = getParam( request + "&", "LED1" );
+    //
+    Serial.print("Analyse = " + request + "\n");
     int res = stringToInt( result );
     Serial.print("RES = " + result + "\n");
     Serial.print("RES_int = " + String(res) + "\n");
@@ -124,10 +125,9 @@ void switchLed ( int value ){
 }
 
 int stringToInt ( String str ){
-  Serial.print("stringToInt("+ str +")=" );
-//  char str_as_char[str.length()];
-  char *str_as_char;
-  str.toCharArray( str_as_char, str.length() );
+  Serial.print("stringToInt("+ str +"["+ str.length() +"])=" );
+  char str_as_char[str.length()+1];
+  str.toCharArray( str_as_char, str.length()+1  );
   Serial.println( str_as_char );
-  return int( str_as_char );
+  return atoi( str_as_char );
 }
