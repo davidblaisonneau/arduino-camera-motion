@@ -17,6 +17,11 @@
 
 #include <SPI.h>
 #include <Ethernet.h>
+#include <Servo.h>
+ 
+Servo myservo;  // create servo object to control a servo
+                // a maximum of eight servo objects can be created
+ 
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -24,6 +29,7 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEF };
 //byte ip[] = { 10 ,193 ,11 , 249 };
 byte ip[] = { 192, 168, 1 ,151 };
 
+String paramName = "servo1";
 int LedInterne = 13;
 int delai = 1000;
 String readString;
@@ -44,6 +50,7 @@ void setup()
   pinMode(10, OUTPUT);       
   server.begin();
   pinMode(LedInterne, OUTPUT);
+  myservo.attach(9);  // attaches the servo on pin 9 to the servo object
 }
 
 void loop()
@@ -61,11 +68,22 @@ void loop()
         }        
         Serial.print(c);
         
-        // We are just analysing the first line, so we wait for a \n
         if (c == '\r') {
           Serial.print ( "\nAnalyse "+ readString + "\n" );
-          analyseURL ( client, readString );
-          break;
+          String params = analyseURL ( readString );
+          if ( params == "" ){
+            sendHTTPResponse ( client, "204 No Content", "No parameters" );
+            break;
+          }
+          String value = getParamValue ( params + "&", paramName  );
+          Serial.print ( paramName +" = "+ value + "\n" );
+          if ( setServoAngle(stringToInt(value)) ){
+            sendHTTPResponse ( client, "200 OK", "Done" );
+            break;
+          }else{
+            sendHTTPResponse ( client, "400 Bad Request", "Bad "+ paramName +" value" );
+            break;
+          }
         }
       }
     }
@@ -76,8 +94,8 @@ void loop()
   }
 }
 
-void sendHTTPResponse ( Client client, int error, String message ){
-  client.println("HTTP/1.1 200 OK");
+void sendHTTPResponse ( Client client, String error, String message ){
+  client.println("HTTP/1.1 "+ error);
   client.println("Content-Type: text");
   client.println();
 
@@ -85,30 +103,22 @@ void sendHTTPResponse ( Client client, int error, String message ){
   client.print(message);
 }
 
-void analyseURL ( Client client, String request ){
-  int param_index = request.indexOf("?");
-  if ( param_index < 0 ){
-    sendHTTPResponse (client, 200, "Aucun paramètre");
+String analyseURL ( String request ){
+  int params_index = request.indexOf("?");
+  if ( params_index < 0 ){
+    return "";
   }else{
-    request = request.substring( param_index+1 );
-    int param_end_index = request.indexOf(" ");
-    request = request.substring( 0, param_end_index );
-    String result = getParam( request + "&", "LED1" );
-    //
-    Serial.print("Analyse = " + request + "\n");
-    int res = stringToInt( result );
-    Serial.print("RES = " + result + "\n");
-    Serial.print("RES_int = " + String(res) + "\n");
-    switchLed ( res );
-    sendHTTPResponse ( client, 200, "OK" );
+    request = request.substring( params_index+1 );
+    int params_end_index = request.indexOf(" ");
+    return request.substring( 0, params_end_index );
   }
 }
 
-String getParam ( String request, String param ){
+String getParamValue ( String request, String param ){
   int param_index = request.indexOf( param + "=");
   int param_end_index = request.indexOf( "&" , param_index );
-  Serial.print(request + "\n");
-  Serial.print("From " + String(param_index + param.length() + 1) + " to " + String(param_end_index) + "\n");
+  //Serial.print(request + "\n");
+  //Serial.print("From " + String(param_index + param.length() + 1) + " to " + String(param_end_index) + "\n");
   if ( param_index < 0 && param_index < 0  ) {
     return "";
   }else{
@@ -121,6 +131,15 @@ void switchLed ( int value ){
     digitalWrite(LedInterne, HIGH );
   }else{
     digitalWrite(LedInterne, LOW );
+  }
+}
+
+int setServoAngle ( int value ) {
+  if ( value > -1 && value < 181 ){
+    myservo.write(value);
+    return 1;
+  }else{
+    return 0;
   }
 }
 
