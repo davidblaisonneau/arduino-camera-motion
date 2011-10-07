@@ -29,10 +29,14 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEF };
 //byte ip[] = { 10 ,193 ,11 , 249 };
 byte ip[] = { 192, 168, 1 ,151 };
 
-String paramName = "servo1";
 int LedInterne = 13;
 int delai = 1000;
 String readString;
+
+// Params to get
+int paramQty = 2;
+String paramToAnalyse[2] = { "servo1", "LED" };
+String paramValues[2];
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
@@ -75,15 +79,26 @@ void loop()
             sendHTTPResponse ( client, "204 No Content", "No parameters" );
             break;
           }
-          String value = getParamValue ( params + "&", paramName  );
-          Serial.print ( paramName +" = "+ value + "\n" );
-          if ( setServoAngle(stringToInt(value)) ){
-            sendHTTPResponse ( client, "200 OK", "Done" );
+          
+          String returnText = "";
+          for( int cpt=0 ; cpt<paramQty ; cpt++ ){
+            paramValues[cpt] = getParamValue ( params + "&", paramToAnalyse[cpt]  );
+            returnText += paramToAnalyse[cpt] +" = "+ paramValues[cpt] + "\n";
+            Serial.print ( paramToAnalyse[cpt] +" = "+ paramValues[cpt] + "\n" );
+          }
+   
+          // Set LED
+          switchLed(stringToInt(paramValues[1]));
+          // Set servo angle
+          if ( setServoAngle(stringToInt(paramValues[0])) ){
+            sendHTTPResponse ( client, "200 OK", "Done. I get values:\n"+returnText );
             break;
           }else{
-            sendHTTPResponse ( client, "400 Bad Request", "Bad "+ paramName +" value" );
+            sendHTTPResponse ( client, "400 Bad Request", "Bad "+ paramToAnalyse[0] +" value" );
             break;
           }
+  
+          
         }
       }
     }
@@ -94,7 +109,8 @@ void loop()
   }
 }
 
-void sendHTTPResponse ( Client client, String error, String message ){
+void sendHTTPResponse ( Client client, 
+String error, String message ){
   client.println("HTTP/1.1 "+ error);
   client.println("Content-Type: text");
   client.println();
@@ -144,9 +160,9 @@ int setServoAngle ( int value ) {
 }
 
 int stringToInt ( String str ){
-  Serial.print("stringToInt("+ str +"["+ str.length() +"])=" );
+  //Serial.print("stringToInt("+ str +"["+ str.length() +"])=" );
   char str_as_char[str.length()+1];
   str.toCharArray( str_as_char, str.length()+1  );
-  Serial.println( str_as_char );
+  //Serial.println( str_as_char );
   return atoi( str_as_char );
 }
