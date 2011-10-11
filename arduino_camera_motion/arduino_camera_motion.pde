@@ -22,7 +22,8 @@
 static uint8_t mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
 // CHANGE THIS TO MATCH YOUR HOST NETWORK
-static uint8_t ip[] = { 10, 193, 11, 249};
+//static uint8_t ip[] = { 10, 193, 11, 249};
+static uint8_t ip[] = { 192, 168, 1, 150};
 
 #define PREFIX ""
 WebServer webserver(PREFIX, 80);
@@ -71,21 +72,51 @@ void jsonCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, 
 
 void defaultCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete)
 {
-  server.httpSuccess("html/text");
-  server << "<H1>Hello</H1>";
+  server.httpSeeOther(PREFIX "/web");
   return;
 }
 
 void webCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete)
 {
-  server.httpSuccess("html/text");
+  P(htmlHead) =
+    "<html>"
+    "<head>"
+    "<title>Arduino Web Server</title>"
+    "</head>"
+    "<body>";
+  server.httpSuccess();
+  server.printP(htmlHead);
   server << "<H1>Hello</H1>";
+  server << "<form action='" PREFIX "/ws' method='post'>";
+  server.radioButton("led", "1", "On", digitalRead(pin_ledInterne));
+  server.radioButton("led", "0", "Off", !digitalRead(pin_ledInterne));
+  server << "<br/>";
+  server << "Servo 1<input type='text' name='servo1' value='" + String(myservo.read()) + "'/></form>";
+  server << "<br/>";
+  server << "<input type='submit' value='Submit'/></form>";
+  server << "</body></html>";
   return;
 }
 
 void webServicesCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete)
 {
-  server.httpSuccess("html/text");
+  
+  if (type == WebServer::POST)
+  {
+    bool repeat;
+    char name[16], value[16];
+    do
+    {
+      repeat = server.readPOSTparam(name, 16, value, 16);
+      if ( String(name) == "led" )          { switchLed(atoi(value)); }
+      else if ( String(name) == "servo1" )  { setServoAngle(atoi(value)); }
+      Serial.println( String(name) + " = " + String(value));
+    } while (repeat);
+
+    server.httpSeeOther(PREFIX "/web");
+  }
+  
+  server.httpSuccess();
   server << "<H1>Hello</H1>";
   return;
 }
@@ -105,7 +136,7 @@ void setup()
     
   // Serial init
   Serial.begin(9600);
-  Serial.print("Initializing server...");
+  Serial.println("Initializing server...");
   // make sure that the default chip select pin is set to
   // output, even if you don't use it:
   pinMode(10, OUTPUT);
@@ -133,6 +164,8 @@ void loop()
  ****************************************************************************************************************/
 
 void switchLed ( int value ){
+  
+  Serial.println("Switch led to " + String(value));
   if ( value > 0 ){
     digitalWrite(pin_ledInterne, HIGH );
   }else{
@@ -141,6 +174,7 @@ void switchLed ( int value ){
 }
 
 int setServoAngle ( int value ) {
+  Serial.println("Set servo to " + String(value));
   if ( value > -1 && value < 181 ){
     myservo.write(value);
     return 1;
